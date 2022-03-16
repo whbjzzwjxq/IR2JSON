@@ -43,15 +43,13 @@ struct IR2JSON : public FunctionPass {
     bool runOnFunction(Function &F) override {
         json::Object func_info;
         func_info["name"] = F.getName().str();
-        func_info["bbs"] = {};
+        func_info["basic_blocks"] = {};
         for (auto &bb : F.getBasicBlockList()) {
             json::Object bb_info;
             bb_info["name"] = bb.getName().str();
             bb_info["insts"] = {};
             for (auto &inst : bb.getInstList()) {
-                auto &debugLoc = inst.getDebugLoc();
                 json::Object inst_info;
-                inst_info["line"] = debugLoc.getLine();
                 inst_info["opcode"] = inst.getOpcodeName();
                 inst_info["operands"] = {};
                 for (auto &i : inst.operands()) {
@@ -70,7 +68,7 @@ struct IR2JSON : public FunctionPass {
                 bb_info["insts"].getAsArray()->push_back(_val);
             };
             auto _val = json::Value(json::Object(bb_info));
-            func_info["bbs"].getAsArray()->push_back(_val);
+            func_info["basic_blocks"].getAsArray()->push_back(_val);
         };
         json::OStream J(errs());
         J.value(json::Value(json::Object(func_info)));
