@@ -50,14 +50,14 @@ struct IR2JSON : public FunctionPass {
             bb_info["insts"] = {};
             for (auto &inst : bb.getInstList()) {
                 json::Object inst_info;
+                inst_info["name"] = inst.getName().str();
                 inst_info["opcode"] = inst.getOpcodeName();
                 inst_info["operands"] = {};
                 for (auto &i : inst.operands()) {
                     json::Object op_info;
                     auto op = i.get();
                     op_info["name"] = op->getName().str();
-                    op_info["type"] =
-                        enumToStr(static_cast<int>(op->getType()->getTypeID()));
+                    op_info["type"] = enumToStr(static_cast<int>(op->getType()->getTypeID()));
                     op->printAsOperand(buffer, false);
                     op_info["value"] = out;
                     out = "";
