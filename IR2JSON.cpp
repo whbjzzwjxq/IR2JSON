@@ -32,8 +32,8 @@ static const char *TypeIDStrings[] = {
 };
 
 const char *enumToStr(int enumVal) { return TypeIDStrings[enumVal]; }
-std::string out;
-raw_string_ostream buffer(out);
+std::string out_buffer;
+raw_string_ostream buffer(out_buffer);
 
 namespace {
 struct IR2JSON : public FunctionPass {
@@ -50,17 +50,17 @@ struct IR2JSON : public FunctionPass {
             bb_info["insts"] = {};
             for (auto &inst : bb.getInstList()) {
                 json::Object inst_info;
-                inst_info["name"] = inst.getName().str();
+                inst_info["assign"] = inst.getName().str();
                 inst_info["opcode"] = inst.getOpcodeName();
                 inst_info["operands"] = {};
                 for (auto &i : inst.operands()) {
                     json::Object op_info;
                     auto op = i.get();
-                    op_info["name"] = op->getName().str();
+                    op_info["reg_name"] = op->getName().str();
                     op_info["type"] = enumToStr(static_cast<int>(op->getType()->getTypeID()));
                     op->printAsOperand(buffer, false);
-                    op_info["value"] = out;
-                    out = "";
+                    op_info["value"] = out_buffer;
+                    out_buffer = "";
                     auto _val = json::Value(json::Object(op_info));
                     inst_info["operands"].getAsArray()->push_back(_val);
                 };
@@ -79,4 +79,4 @@ struct IR2JSON : public FunctionPass {
 } // namespace
 
 char IR2JSON::ID = 0;
-static RegisterPass<IR2JSON> X("ir2json", "Covert IR to JSON", false, false);
+static RegisterPass<IR2JSON> X("IR2JSON", "Covert IR to JSON", false, false);
