@@ -2,7 +2,7 @@
 
 ## Description
 
-A LLVM Pass to extract information from llvm to json
+A LLVM Pass to extract information from llvm to json, using old pass manager of LLVM.
 
 ## Build
 
