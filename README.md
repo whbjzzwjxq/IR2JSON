@@ -8,7 +8,7 @@ A LLVM Pass to extract information from llvm to json, using old pass manager of 
 
 Assume your llvm-project locates ./llvm-project
 
-    git clone ./llvm-project/llvm/lib/Transforms/IR2JSON
+    git clone git@github.com:whbjzzwjxq/Re-IR2JSON.git ./llvm-project/llvm/lib/Transforms/IR2JSON
 
 add  `add_subdirectory(IR2JSON)` to ./llvm-project/llvm/lib/Transforms/CMakeLists.txt
 
