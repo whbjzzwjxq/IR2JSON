@@ -1,8 +1,8 @@
 #include "llvm/IR/Function.h"
+#include "llvm/IR/Instructions.h"
 #include "llvm/Pass.h"
 #include "llvm/Support/JSON.h"
 #include "llvm/Support/raw_ostream.h"
-#include "llvm/IR/Instructions.h"
 
 using namespace llvm;
 
@@ -46,7 +46,7 @@ struct IR2JSON : public FunctionPass {
         return _val;
     };
 
-    json::Value opd2json(Value *opd) {
+    json::Object val2json(Value *opd) {
         json::Object obj;
         obj["var_name"] = opd->getName().str();
         obj["type"] = enumToStr(static_cast<int>(opd->getType()->getTypeID()));
@@ -55,7 +55,19 @@ struct IR2JSON : public FunctionPass {
         opd->printAsOperand(buffer, false);
         obj["value"] = out_buffer;
         out_buffer.clear();
-        return obj2value(obj);
+        obj["pred_block"] = "";
+        return obj;
+    };
+
+    json::Object use2json(Use *opd, Instruction &inst) {
+        json::Object obj = val2json(opd->get());
+        if (llvm::isa<PHINode>(inst)) {
+            if (llvm::PHINode *phiInst = dyn_cast<llvm::PHINode>(&inst)) {
+                llvm::BasicBlock *bb = phiInst->getIncomingBlock(*opd);
+                obj["pred_block"] = bb->getName().str();
+            };
+        }
+        return obj;
     };
 
     json::Value inst2json(Instruction &inst) {
@@ -69,7 +81,8 @@ struct IR2JSON : public FunctionPass {
             inst_info["predicate"] = "";
         }
         for (auto &i : inst.operands()) {
-            inst_info["operands"].getAsArray()->push_back(opd2json(i.get()));
+            auto opd_info = use2json(&i, inst);
+            inst_info["operands"].getAsArray()->push_back(obj2value(opd_info));
         };
         return obj2value(inst_info);
     };
@@ -91,7 +104,8 @@ struct IR2JSON : public FunctionPass {
         func_info["basic_blocks"] = {};
         func_info["args"] = {};
         for (auto &arg : F.args()) {
-            func_info["args"].getAsArray()->push_back(opd2json(&arg));
+            func_info["args"].getAsArray()->push_back(
+                obj2value(val2json(&arg)));
         }
         for (auto &bb : F.getBasicBlockList()) {
             func_info["basic_blocks"].getAsArray()->push_back(bb2json(bb));
