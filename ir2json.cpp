@@ -6,8 +6,7 @@
 
 using namespace llvm;
 
-std::string _prefix = "    ";
-static const char *TypeIDStrings[] = {
+static std::string TypeIDStrings[] = {
     "Half",      ///< 16-bit floating point type
     "BFloat",    ///< 16-bit floating point type (7-bit significand)
     "Float",     ///< 32-bit floating point type
@@ -32,30 +31,37 @@ static const char *TypeIDStrings[] = {
     "ScalableVector", ///< Scalable SIMD vector type
 };
 
-const char *enumToStr(int enumVal) { return TypeIDStrings[enumVal]; }
-std::string out_buffer;
-raw_string_ostream buffer(out_buffer);
-
 namespace {
 struct IR2JSON : public FunctionPass {
     static char ID;
     IR2JSON() : FunctionPass(ID) {}
+
+    std::string type2str(llvm::Type *_type) {
+        if (llvm::IntegerType *intType = dyn_cast<llvm::IntegerType>(_type)) {
+            std::string s_type = "i";
+            s_type.append(std::to_string(intType->getBitWidth()));
+            return s_type;
+        }
+        return TypeIDStrings[static_cast<int>(_type->getTypeID())];
+    }
 
     json::Value obj2value(json::Object obj) {
         auto _val = json::Value(json::Object(obj));
         return _val;
     };
 
-    json::Object val2json(Value *opd) {
-        json::Object obj;
-        obj["var_name"] = opd->getName().str();
-        obj["type"] = enumToStr(static_cast<int>(opd->getType()->getTypeID()));
+    std::string printValue(Value *opd) {
         std::string out_buffer;
         raw_string_ostream buffer(out_buffer);
         opd->printAsOperand(buffer, false);
-        obj["value"] = out_buffer;
-        out_buffer.clear();
-        obj["pred_block"] = "";
+        return out_buffer;
+    }
+
+    json::Object val2json(Value *opd) {
+        json::Object obj;
+        obj["var_name"] = opd->getName().str();
+        obj["type"] = type2str(opd->getType());
+        obj["value"] = printValue(opd);
         return obj;
     };
 
@@ -70,37 +76,48 @@ struct IR2JSON : public FunctionPass {
         return obj;
     };
 
-    json::Value inst2json(Instruction &inst) {
+    json::Object alloca2json(AllocaInst &inst) {
+        json::Object alloca_info;
+        alloca_info["align"] = inst.getAlignment();
+        alloca_info["allocated_type"] = type2str(inst.getAllocatedType());
+        alloca_info["array_size"] = printValue(inst.getArraySize());
+        alloca_info["isArray"] = inst.isArrayAllocation();
+        return alloca_info;
+    }
+
+    json::Object inst2json(Instruction &inst) {
         json::Object inst_info;
         inst_info["assign"] = inst.getName().str();
         inst_info["opcode"] = inst.getOpcodeName();
         inst_info["operands"] = {};
         if (llvm::CmpInst *cmpInst = dyn_cast<llvm::CmpInst>(&inst)) {
             inst_info["predicate"] = cmpInst->getPredicateName(cmpInst->getPredicate());
-        } else {
-            inst_info["predicate"] = "";
         }
+        if (llvm::AllocaInst *allocaInst = dyn_cast<llvm::AllocaInst>(&inst)) {
+            inst_info["alloca"] = obj2value(alloca2json(*allocaInst));
+        }
+
         for (auto &i : inst.operands()) {
             auto opd_info = use2json(&i, inst);
             inst_info["operands"].getAsArray()->push_back(obj2value(opd_info));
         };
-        return obj2value(inst_info);
+        return inst_info;
     };
 
-    json::Value bb2json(BasicBlock &bb) {
+    json::Object bb2json(BasicBlock &bb) {
         json::Object bb_info;
         bb_info["name"] = bb.getName().str();
         bb_info["insts"] = {};
         for (auto &inst : bb.getInstList()) {
-            bb_info["insts"].getAsArray()->push_back(inst2json(inst));
+            bb_info["insts"].getAsArray()->push_back(obj2value(inst2json(inst)));
         };
-        return obj2value(bb_info);
+        return bb_info;
     }
 
     json::Object func2json(Function &F) {
         json::Object func_info;
         func_info["name"] = F.getName().str();
-        func_info["ret_type"] = enumToStr(F.getReturnType()->getTypeID());
+        func_info["ret_type"] = type2str(F.getReturnType());
         func_info["basic_blocks"] = {};
         func_info["args"] = {};
         for (auto &arg : F.args()) {
@@ -108,7 +125,7 @@ struct IR2JSON : public FunctionPass {
                 obj2value(val2json(&arg)));
         }
         for (auto &bb : F.getBasicBlockList()) {
-            func_info["basic_blocks"].getAsArray()->push_back(bb2json(bb));
+            func_info["basic_blocks"].getAsArray()->push_back(obj2value(bb2json(bb)));
         };
         return func_info;
     }
