@@ -38,10 +38,19 @@ struct IR2JSON : public FunctionPass {
 
     std::string type2str(llvm::Type *_type) {
         if (llvm::IntegerType *intType = dyn_cast<llvm::IntegerType>(_type)) {
-            std::string s_type = "i";
+            std::string s_type = "I";
             s_type.append(std::to_string(intType->getBitWidth()));
             return s_type;
         }
+        if (llvm::ArrayType *arrType = dyn_cast<llvm::ArrayType>(_type)) {
+            std::string s_type = "Array";
+            s_type.append("-");
+            s_type.append(type2str(arrType->getArrayElementType()));
+            s_type.append("-");
+            s_type.append(std::to_string(arrType->getArrayNumElements()));
+            return s_type;
+        }
+
         return TypeIDStrings[static_cast<int>(_type->getTypeID())];
     }
 
@@ -81,7 +90,6 @@ struct IR2JSON : public FunctionPass {
         alloca_info["align"] = inst.getAlignment();
         alloca_info["allocated_type"] = type2str(inst.getAllocatedType());
         alloca_info["array_size"] = printValue(inst.getArraySize());
-        alloca_info["isArray"] = inst.isArrayAllocation();
         return alloca_info;
     }
 
