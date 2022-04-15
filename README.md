@@ -17,7 +17,7 @@ add  `add_subdirectory(IR2JSON)` to ./llvm-project/llvm/lib/Transforms/CMakeList
 
 ## Usage
 
-    opt -load path-to-lib/IR2JSON.so --IR2JSON input.bc 1> /dev/null 2> output.json
+    opt -load -enable-new-pm=0 path-to-lib/IR2JSON.so --IR2JSON input.bc 1> /dev/null 2> output.json
 
 ## Compilation of LLVM
 
