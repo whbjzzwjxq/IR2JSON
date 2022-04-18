@@ -36,6 +36,12 @@ struct IR2JSON : public FunctionPass {
     static char ID;
     IR2JSON() : FunctionPass(ID) {}
 
+    std::string addSuffix(std::string source, std::string suffix) {
+        source.append("-");
+        source.append(suffix);
+        return source;
+    }
+    
     std::string type2str(llvm::Type *_type) {
         if (llvm::IntegerType *intType = dyn_cast<llvm::IntegerType>(_type)) {
             std::string s_type = "I";
@@ -44,10 +50,13 @@ struct IR2JSON : public FunctionPass {
         }
         if (llvm::ArrayType *arrType = dyn_cast<llvm::ArrayType>(_type)) {
             std::string s_type = "Array";
-            s_type.append("-");
-            s_type.append(type2str(arrType->getArrayElementType()));
-            s_type.append("-");
-            s_type.append(std::to_string(arrType->getArrayNumElements()));
+            s_type = addSuffix(s_type, type2str(arrType->getArrayElementType()));
+            s_type = addSuffix(s_type, std::to_string(arrType->getArrayNumElements()));
+            return s_type;
+        }
+        if (llvm::PointerType *pointerType = dyn_cast<llvm::PointerType>(_type)) {
+            std::string s_type = "Pointer";
+            s_type = addSuffix(s_type, type2str(pointerType->getContainedType(0)));
             return s_type;
         }
 
@@ -96,6 +105,7 @@ struct IR2JSON : public FunctionPass {
     json::Object inst2json(Instruction &inst) {
         json::Object inst_info;
         inst_info["assign"] = inst.getName().str();
+        inst_info["assign_type"] = type2str(inst.getType());
         inst_info["opcode"] = inst.getOpcodeName();
         inst_info["operands"] = {};
         if (llvm::CmpInst *cmpInst = dyn_cast<llvm::CmpInst>(&inst)) {
