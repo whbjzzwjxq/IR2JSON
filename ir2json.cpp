@@ -50,8 +50,8 @@ struct IR2JSON : public FunctionPass {
         }
         if (llvm::ArrayType *arrType = dyn_cast<llvm::ArrayType>(_type)) {
             std::string s_type = "Array";
-            s_type = addSuffix(s_type, type2str(arrType->getArrayElementType()));
             s_type = addSuffix(s_type, std::to_string(arrType->getArrayNumElements()));
+            s_type = addSuffix(s_type, type2str(arrType->getArrayElementType()));
             return s_type;
         }
         if (llvm::PointerType *pointerType = dyn_cast<llvm::PointerType>(_type)) {
